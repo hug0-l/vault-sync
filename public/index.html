@@ -30,8 +30,8 @@ const api=async(p,b)=>{const r=await fetch("/api/"+p,{method:b?"POST":"GET",head
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
 
 async function boot(){
-  try{S.status=await api("status")}catch(e){ if(e.j&&e.j.setup)return setup(); if(e.message=="401")return login(); throw e}
-  try{S.cfg=await api("config")}catch(e){ if(String(e.message)=="401")return login(); throw e}
+  try{S.status=await api("status")}catch(e){ if(e.j&&e.j.setup)return setup(); if(e.j&&e.j.error=="unauthorized")return login(); throw e}
+  try{S.cfg=await api("config")}catch(e){ if(e.j&&e.j.error=="unauthorized")return login(); throw e}
   render();
 }
 function login(err){
