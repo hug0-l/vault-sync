@@ -1,73 +1,77 @@
 # vault-sync
 
-Headless, one-way **incremental** backup from a self-hosted [Vaultwarden](https://github.com/dani-garcia/vaultwarden) server to a second Bitwarden-compatible server (e.g. the official Bitwarden cloud) — designed to run unattended from cron with **no plaintext secrets at rest**.
+A self-contained container that keeps a second Bitwarden-compatible vault as an **encrypted, incremental mirror** of your primary [Vaultwarden](https://github.com/dani-garcia/vaultwarden) (or any two Bitwarden-API servers, either direction) — with a small web UI for credentials, scheduling, logs and manual runs.
 
-Unlike a full `bw export` → `bw import` (which dumps and re-imports every item nightly), vault-sync keeps a local mapping of source↔target item ids and applies only the real diff: creates new items, edits changed ones, deletes removed ones. Typical nightly run on a ~1000-item vault: **under a minute**.
+Built for unattended nightly operation on NAS boxes (developed on Unraid), headless-safe: API-key auth skips interactive 2FA/device challenges, and everything sensitive is encrypted at rest.
 
-## Architecture
+## Features
 
-```
-cron ──► run.sh                # decrypts *_ENC secrets (openssl, key on local disk) → tmpfs env, flock guard
-           └─► docker run (this image)
-                 ├─ stage-export.sh   # source: bw apikey login → encrypted archive to /backup
-                 │                     #           + plaintext export to container RAM (/dev/shm) only
-                 └─ sync.mjs          # target: bw list (1 API call) → semantic diff via
-                                      #   mapping.json → create/edit/delete only what changed
-                                      #   (name-adoption self-heals mapping drift)
-```
+- **Incremental mirror** — computes a semantic diff (source snapshot vs target state + stored id mapping) and applies only creates/edits/deletes. Typical nightly run of a ~1000-item vault: **seconds**, not minutes
+- **Archive mode** — daily Bitwarden `encrypted_json` export (sealed with a dedicated file password, separate from your master) with day-based retention, restorable anywhere: `bw import bitwardenjson FILE --passwordenv FILEPW`
+- **Web UI** — status, logs, run-now, schedule (daily / every-N-hours / manual), direction & method switch, masked credential editor with per-peer live connection test, TOTP 2FA for the UI itself
+- **Encrypted config** — all credentials live in `config.enc` (AES-256-GCM, scrypt-derived); the key file is meant to live on non-array media (e.g. Unraid USB at `/boot/config/...`) mounted read-only into the container
+- **Self-healing mapping** — target items are matched by stored ids first, then by unique-name adoption (with count-aware pairing for duplicate names); flipping direction automatically **inverts** the existing mapping instead of re-adopting
 
-- **Encrypted archive**: `vaultwarden-YYYY-MM-DD.json` (Bitwarden `encrypted_json`, sealed with a separate file password) kept in `backups/` — N-day rotation, restorable anywhere:
-  `bw import bitwardenjson FILE --passwordenv FILEPW`
-- **Mapping**: `backups/mapping.json` (source id ↔ target id). If it drifts, unique-name adoption repairs it; delete it to force full re-adoption.
-
-## Requirements
-
-- Docker host (Unraid-friendly; plain POSIX `sh`, no bashisms)
-- `@bitwarden/cli` ≥ 2026.8 (installed in the image via `npm`)
-- **API keys on both accounts** (Vaultwarden and the target server → Account → Security → API Key). API-key auth skips interactive 2FA/device-verification, which is what makes this headless-safe.
-- The target vault should be a **dedicated backup account** — it is kept as a mirror; anything you add there will be deleted on the next sync.
-
-## Setup
+## Quick start
 
 ```bash
-cd /path/to/vault-sync
-docker build -t vault-sync:latest .
-cp env.example .env && chmod 600 .env        # fill API keys (secrets), keep *_ENC lines
-# encrypt the master passwords + file password with a key that lives OUTSIDE the app dir,
-# e.g. on the Unraid USB (survives reboot, never in array backups):
-head -c 32 /dev/urandom | base64 > /boot/config/plugins/vaultsync/key
-enc(){ printf '%s' "$1" | openssl enc -aes-256-cbc -pbkdf2 -pass file:/boot/config/plugins/vaultsync/key | base64 -w0; }
-#   → paste output into *_ENC entries; generate FILEPW with head -c 18 /dev/urandom | base64
-./install.sh                                  # arms the nightly crontab entry (root)
-sh run.sh                                     # first (seed) run — creates all target items
+docker build -t vault-sync .
+docker run -d --name vault-sync --restart unless-stopped \
+  -p 127.0.0.1:8770:8770 \
+  -v /srv/vault-sync:/data \
+  -v /path/to/keyfile:/run/secrets/key:ro \
+  vault-sync
 ```
 
-## Config (`.env`)
+Open the UI, complete the setup wizard (admin password + two peers), press **Test** on each peer, then **Run now**. The internal scheduler handles the rest. No crontab required.
 
-| Key | Meaning |
-| --- | --- |
-| `SRC_SERVER` / `SRC_CLIENT_ID` / `SRC_CLIENT_SECRET` | source Vaultwarden + API key |
-| `SRC_MASTER_ENC` | openssl-encrypted source master password (unlocked for export) |
-| `DST_SERVER` / `DST_CLIENT_ID` / `DST_CLIENT_SECRET` | target server + API key |
-| `DST_MASTER_ENC` | encrypted target master password |
-| `FILEPW_ENC` | encrypted file password sealing the archive (≠ master) |
+Each peer needs: server URL, **API key** (client_id/client_secret — vaultwarden: account → security → API Key; bitwarden.com: account → API Key, may require enabling 2FA first), and the master password.
 
-`run.sh` decrypts these into `/dev/shm` per run and never writes plaintext to disk. (Unraid users: **do not** name the key file `*.key` directly under `/boot/config/` — emhttpd treats it as a disk encryption key and spams the log. Use a subdirectory.)
+> ⚠️ The UI serves plain HTTP and stores the keys to your password vaults. Bind the port to a trusted interface (as above), **do not** put it behind a public reverse proxy, and enable the built-in TOTP 2FA.
+
+## Security model
+
+| Secret | At rest | In memory |
+|---|---|---|
+| API client secrets, master passwords, file password | AES-256-GCM `config.enc` (key = mounted file, outside `/data`) | process env for the seconds of use |
+| Nightly archive | Bitwarden encrypted_json, sealed with a **separate file password** (not stored anywhere else) | — |
+| Plaintext vault data | never written to disk | container tmpfs (`/dev/shm`) during a run only |
+
+- No credentials are ever returned by the API (masked `····xxxx`); they're only replaced, never read.
+- `bw` child-process errors are redacted (base64 payloads stripped) before hitting the log.
+- Login rate limiting (5/min per IP) + optional TOTP.
+- If no key file is mounted, a random one is generated inside `/data` with a loud UI warning — the encryption then only protects against casual disk reads.
+
+## How the mirror diff works
+
+`mapping.json` (inside `/data/backups/`) stores `{direction: {source_id → target_id}}`. Each run:
+
+1. source snapshot via `bw export --format json` (tmpfs only) + encrypted archive written
+2. target state via one `bw sync` + `bw list items/folders`
+3. diff under normalization: volatile fields (`id`, `key`, `object`, `revisionDate`, `reprompt`, empty optionals, …) are stripped from **both** sides, so a steady-state vault produces a zero-op plan
+4. `create / edit / delete` applied at concurrency 2 with backoff; mapping checkpointed every 25 ops
+
+**Direction semantics** — this is a one-way mirror: `B>A` makes the source side's content overwrite the target. It is *not* two-way merge (that's on the roadmap; the data model already stores both peers symmetrically). Target items unknown to the mapping are **left alone** (never deleted) as a safety policy.
+
+## Files
+
+```
+server.mjs         API + scheduler
+auth.mjs           bcrypt login, TOTP (otplib), rate limit, sessions
+crypto.mjs         config.enc envelope (scrypt + AES-256-GCM)
+engine/bw.mjs      hardened @bitwarden/cli wrapper (positional base64 args, redacted errors)
+engine/plan.mjs    pure diff/normalization/adoption
+engine/apply.mjs   concurrent job runner with checkpointing
+engine/run.mjs     cycle orchestration, mapping buckets + direction inversion, retention
+public/index.html  single-page UI (no framework)
+Dockerfile         node:20-alpine + @bitwarden/cli@latest
+```
 
 ## Debugging
 
-- `DRY_RUN=1` — compute and print the plan, apply nothing
-- `DEBUG_DIFF=1` — print the first few field-level differences feeding the plan
-- Logs land in `backups/sync.log` (see cron line)
-
-## Known CLI gotchas encoded here
-
-- `bw create/edit item` takes the **base64-encoded JSON as a positional argument** (and `encode`-via-subprocess is not needed — it's just base64)
-- `bw export` uses `--password` (value), `bw import` uses `--passwordenv` (var name), `--format` is singular, `list` prints JSON natively (no `--output/--json`)
-- `bw config server <url>` is required — `BW_SERVER` env is ignored by recent builds
-- Recent cloud `list items` responses add per-item `key`/`object` fields absent from exports — normalized away or every item diffs nightly
-- Never run two syncs concurrently: sessions stale each other → `item out of date` storms (`run.sh` flocks for you)
-- Free Bitwarden cloud tiers gate file attachments and file-Sends behind Premium — the CRUD-mirror approach exists for exactly that reason
+- `DRY_RUN=1` — every run computes and logs the plan, applies nothing
+- `DEBUG_DIFF=1` — reserved for field-level diff tracing
+- logs: `/data/sync.log` (also in the UI), state: `/data/state.json`
 
 ## License
 

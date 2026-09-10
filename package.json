@@ -1,0 +1,13 @@
+{
+  "name": "vault-sync",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Headless one-way vaultwarden -> bitwarden incremental mirror with web UI",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.21.2",
+    "otplib": "^12.0.1"
+  }
+}

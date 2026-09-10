@@ -1,0 +1,120 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>vault-sync</title>
+<style>
+:root{--bg:#11161c;--card:#1a222b;--fg:#d7dee8;--mut:#8496a9;--acc:#4ea1ff;--ok:#3ecf8e;--err:#ff6b6b;--warn:#ffb454;--bd:#28323e}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg)}
+main{max-width:880px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:14px}
+h1{font-size:17px;margin:0}h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:0 0 10px}
+label{display:block;color:var(--mut);font-size:12px;margin:10px 0 3px}
+input,select{width:100%;padding:8px;border-radius:6px;border:1px solid var(--bd);background:#0d1218;color:var(--fg);font:inherit}
+button{background:var(--acc);border:0;color:#04121f;font-weight:600;padding:8px 16px;border-radius:6px;cursor:pointer}
+button.sec{background:#243040;color:var(--fg)}button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>div{flex:1;min-width:180px}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.pill{padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
+.pill.ok{background:#12351f;color:var(--ok)}.pill.err{background:#3a1420;color:var(--err)}.pill.run{background:#18304a;color:var(--acc)}
+pre{background:#0d1218;border:1px solid var(--bd);border-radius:8px;padding:12px;overflow:auto;max-height:360px;font-size:12px;white-space:pre-wrap}
+table{width:100%;border-collapse:collapse}td{padding:4px 8px;border-bottom:1px solid var(--bd);font-size:13px}td:first-child{color:var(--mut);width:130px}
+.hide{display:none}.msg{margin-top:8px;font-size:13px}.msg.err{color:var(--err)}.msg.ok{color:var(--ok)}
+.warn{background:#3a2d12;color:var(--warn);padding:8px 12px;border-radius:8px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+small.hint{color:var(--mut);font-weight:400}
+</style></head><body><main id="app"></main>
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+let S={cfg:null,status:null};
+const api=async(p,b)=>{const r=await fetch("/api/"+p,{method:b?"POST":"GET",headers:{"content-type":"application/json"},body:b?JSON.stringify(b):undefined,credentials:"same-origin"});const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j.error||r.status),{j});return j};
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+async function boot(){
+  try{S.status=await api("status")}catch(e){ if(e.j&&e.j.setup)return setup(); if(e.message=="401")return login(); throw e}
+  try{S.cfg=await api("config")}catch(e){ if(String(e.message)=="401")return login(); throw e}
+  render();
+}
+function login(err){
+  app.innerHTML="";const c=el("div","card");c.style.maxWidth=380;c.style.margin="15vh auto";
+  c.innerHTML=`<h1>vault-sync</h1><label>Password</label><input id=pw type=password><div id=tw class=hide><label>2FA code</label><input id=code maxlength=7></div><div style="margin-top:12px"><button id=go>Sign in</button></div><div id=m class="msg err"></div>`;
+  app.append(c);
+  if(err==="totp"){$("#tw").classList.remove("hide")}
+  $("#go").onclick=async()=>{try{await api("login",{password:$("#pw").value,code:$("#code")?.value});boot()}catch(e){if(e.j&&e.j.totpExpected)return login("totp");$("#m").textContent=e.message}};
+}
+function setup(){
+  app.innerHTML="";const c=el("div","card");
+  c.innerHTML=`<h1>Initial setup</h1><p class=msg style="color:var(--mut)">No config found. Set an admin password and configure peers — everything is stored AES-256-GCM encrypted.</p>
+  <label>Admin password (min 8)</label><input id=apw type=password>
+  <div class=grid2><div><h2>Peer A</h2>${peerForm("a")}</div><div><h2>Peer B</h2>${peerForm("b")}</div></div>
+  <div class=row><div><label>Direction</label><select id=dir><option value="A>B">A → B</option><option value="B>A">B → A</option></select></div>
+  <div><label>Method</label><select id=met><option value="mirror">Incremental mirror</option><option value="archive-only">Archive only</option></select></div></div>
+  <div style="margin-top:14px"><button id=go>Create</button></div><div id=m class=msg></div>`;
+  app.append(c);$("#go").onclick=async()=>{
+    try{await api("init",{adminPassword:$("#apw").value,direction:$("#dir").value,method:$("#met").value,a:peerVal("a"),b:peerVal("b")});login()}catch(e){$("#m").textContent=e.message;$("#m").className="msg err"}};
+}
+const peerForm=(k)=>`<label>Server URL</label><input id=${k}_s placeholder="https://vaultwarden.example.com">
+<label>Client ID</label><input id=${k}_ci placeholder="user.xxxx"><label>Client secret</label><input id=${k}_cs type=password>
+<label>Master password</label><input id=${k}_m type=password>`;
+const peerVal=(k)=>({server:$(`#${k}_s`).value,clientId:$(`#${k}_ci`).value,clientSecret:$(`#${k}_cs`).value,master:$(`#${k}_m`).value});
+function peerStored(k,p){const x=S.cfg[k];return `<label>Server URL</label><input id=${k}_s value="${esc(x.server)}" placeholder="https://…">
+<label>Client ID <small class=hint>${esc(x.clientId)||"not set"}</small></label><input id=${k}_ci placeholder="keep ${esc(x.clientId)}">
+<label>Client secret <small class=hint>${x.clientSecretSet?"stored":"not set"}</small></label><input id=${k}_cs type=password placeholder="${x.clientSecretSet?"unchanged":"enter…"}">
+<label>Master password <small class=hint>${x.masterSet?"stored":"not set"}</small></label><input id=${k}_m type=password placeholder="${x.masterSet?"unchanged":"enter…"}">
+<button class=sec data-test=${k}>Test ${k.toUpperCase()}</button> <span id=${k}_tm class=msg></span>`}
+
+function render(){
+  const st=S.status, lr=st.state.lastRun;
+  app.innerHTML=`<div class=head><h1>vault-sync</h1><div>${st.running?'<span class="pill run">running</span>':lr?(lr.ok?'<span class="pill ok">last run ok</span>':'<span class="pill err">last run had errors</span>'):'<span class="pill err">never run</span>'} <button class=sec id=logout>logout</button></div></div>
+  ${st.keyFromUSB?"":'<div class=warn>⚠ encryption key lives inside the data volume (no /run/secrets/key mount). Anyone with the volume can decrypt credentials.</div>'}
+  <div class=card><h2>Status</h2><table>
+   <tr><td>Last run</td><td>${lr?esc(new Date(lr.ts).toLocaleString()):"—"}${lr?` · ${(lr.durationMs/1000).toFixed(1)}s`:""}</td></tr>
+   <tr><td>Direction / method</td><td>${lr?esc(lr.direction)+" · "+esc(lr.method):"—"}</td></tr>
+   <tr><td>Plan</td><td>${lr&&lr.plan?`+${lr.plan.cre}/~${lr.plan.upd}/-${lr.plan.del} (folders +${lr.plan.creF}/-${lr.plan.delF})`:"—"}</td></tr>
+   <tr><td>Applied / errors</td><td>${lr?`${lr.applied} / ${lr.errors}`:"—"}</td></tr>
+   <tr><td>Next run</td><td>${st.nextRun?new Date(st.nextRun).toLocaleString():"manual only"}</td></tr>
+   <tr><td></td><td><button id=run>Run now</button></td></tr></table><div id=rm class=msg></div></div>
+  <div class=grid2>
+   <div class=card><h2>Sync settings</h2>
+     <div class=row><div><label>Direction</label><select id=dir><option ${S.cfg.direction=="A>B"&&"selected"}>A>B</option><option ${S.cfg.direction=="B>A"&&"selected"}>B>A</option></select></div>
+     <div><label>Method</label><select id=met><option value=mirror ${S.cfg.method=="mirror"&&"selected"}>Incremental mirror</option><option value=archive-only ${S.cfg.method=="archive-only"&&"selected"}>Archive only</option></select></div></div>
+     <label>Schedule</label><select id=sk><option value=daily ${S.cfg.schedule.kind=="daily"&&"selected"}>Daily at</option><option value=interval ${S.cfg.schedule.kind=="interval"&&"selected"}>Every N hours</option><option value=manual ${S.cfg.schedule.kind=="manual"&&"selected"}>Manual only</option></select>
+     <div id=s1 class=row style="margin-top:8px"><div><label>Time (HH:MM)</label><input id=at value="${esc(S.cfg.schedule.at||"04:17")}"></div></div>
+     <div id=s2 class="row hide" style="margin-top:8px"><div><label>Hours</label><input id=hrs type=number min=1 value=${S.cfg.schedule.hours||24}></div></div>
+     <label>Archive retention (days kept)</label><input id=ret type=number min=1 max=60 value=${S.cfg.retention}>
+     <div style="margin-top:12px"><button id=saveCfg>Save</button></div><div id=cm class=msg></div></div>
+   <div class=card><h2>Two-factor (UI login)</h2><div id=tfa></div>
+     <label>Change admin password</label><input id=apw2 type=password placeholder="leave empty to keep">
+     <div style="margin-top:10px"><button id=savePw>Update password</button></div><div id=pwm class=msg></div></div>
+  </div>
+  <div class=card><h2>Credentials</h2><div class=grid2><div><h2>Peer A <small class=hint>source when A→B</small></h2>${peerStored("a")}</div><div><h2>Peer B <small class=hint>target when A→B</small></h2>${peerStored("b")}</div></div>
+   <div style="margin-top:12px"><button id=saveCred>Save credentials</button></div><div id=credm class=msg></div></div>
+  <div class=card><h2>Log</h2><button class=sec id=ref>Refresh</button> <button class=sec onclick="location.reload()">Reload</button><pre id=lg style="margin-top:10px">loading…</pre></div>`;
+
+  $("#logout").onclick=async()=>{await api("logout",{});login()};
+  $("#run").onclick=async()=>{try{await api("run",{});$("#rm").textContent="started…";poll()}catch(e){$("#rm").textContent=e.message;$("#rm").className="msg err"}};
+  $("#sk").onchange=e=>{$("#s1").classList.toggle("hide",e.target.value!="daily");$("#s2").classList.toggle("hide",e.target.value!="interval")};
+  $("#saveCfg").onclick=async()=>{
+    const body={direction:$("#dir").value,method:$("#met").value,retention:+$("#ret").value};
+    const k=$("#sk").value; body.schedule=k=="daily"?{kind:"daily",at:$("#at").value}:k=="interval"?{kind:"interval",hours:+$("#hrs").value}:{kind:"manual"};
+    try{await api("config",body);flash("#cm","saved",1);boot()}catch(e){flash("#cm",e.message,0)}};
+  $("#saveCred").onclick=async()=>{try{await api("config",{a:peerVal("a"),b:peerVal("b")});flash("#credm","saved",1);boot()}catch(e){flash("#credm",e.message,0)}};
+  $("#savePw").onclick=async()=>{if(!$("#apw2").value)return;try{await api("config",{adminPassword:$("#apw2").value});flash("#pwm","updated",1);$("#apw2").value=""}catch(e){flash("#pwm",e.message,0)}};
+  $$("[data-test]").forEach(b=>b.onclick=async()=>{const k=b.dataset.test;const t=$(`#${k}_tm`);t.textContent="testing…";t.className="msg";
+    try{await api("test",{peer:k.toUpperCase(),...peerVal(k)});t.textContent="connection ok ✓";t.className="msg ok"}catch(e){t.textContent=e.message;t.className="msg err"}});
+  renderTfa();
+  loadLogs();
+  function renderTfa(){
+    if(S.cfg.totpEnabled){$("#tfa").innerHTML=`<span class="pill ok">2FA enabled</span> <button class=sec id=toff style="margin-left:8px">Disable</button>`;$("#toff").onclick=async()=>{await api("2fa/disable",{});boot()};return}
+    $("#tfa").innerHTML=`<button class=sec id=ten>Enable 2FA</button><div id=tflow class=hide style="margin-top:10px">
+      <label>Add this URL/secret to your authenticator:</label><pre id=turl></pre>
+      <label>Then enter current code</label><input id=tcode maxlength=7><button id=tconf style="margin-top:8px">Confirm</button></div>`;
+    $("#ten").onclick=async()=>{const r=await api("2fa/enroll",{});$("#tflow").classList.remove("hide");$("#turl").textContent=r.url};
+    $("#tconf").onclick=async()=>{try{await api("2fa/enable",{code:$("#tcode").value});boot()}catch(e){alert(e.message)}};
+  }
+}
+function flash(sel,txt,ok){const e=$(sel);e.textContent=txt;e.className="msg "+(ok?"ok":"err");setTimeout(()=>e.textContent="",6000)}
+async function loadLogs(){const r=await api("logs");$("#lg").textContent=r.text||"(empty)"}
+async function poll(){try{S.status=await api("status");if(!S.status.running){S.cfg=await api("config");render()}}catch(e){}}
+setInterval(async()=>{if($("#lg")){loadLogs();const st=await api("status").catch(()=>null);if(st&&!st.running&&S.status&&S.status.running)render();else if(st&&st.running&&!S.status.running){S.status=st;render()}else S.status=st}},20000);
+boot().catch(e=>{app.innerHTML=`<div class=card><h2>Error</h2><pre>${esc(e.message)}</pre></div>`});
+</script></body></html>

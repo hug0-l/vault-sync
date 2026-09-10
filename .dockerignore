@@ -1,0 +1,7 @@
+node_modules
+.git
+backups
+config.enc
+*.log
+state.json
+.env

@@ -5,3 +5,6 @@ backups/
 mapping.json
 *.log
 *.enc
+
+state.json
+v1-legacy/
