@@ -1,26 +1,78 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>vault-sync</title>
+<title>vault-sync · mirror console</title>
 <style>
-:root{--bg:#11161c;--card:#1a222b;--fg:#d7dee8;--mut:#8496a9;--acc:#4ea1ff;--ok:#3ecf8e;--err:#ff6b6b;--warn:#ffb454;--bd:#28323e}
-*{box-sizing:border-box}body{margin:0;font:14px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg)}
-main{max-width:880px;margin:0 auto;padding:16px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:14px}
-h1{font-size:17px;margin:0}h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:0 0 10px}
-label{display:block;color:var(--mut);font-size:12px;margin:10px 0 3px}
-input,select{width:100%;padding:8px;border-radius:6px;border:1px solid var(--bd);background:#0d1218;color:var(--fg);font:inherit}
-button{background:var(--acc);border:0;color:#04121f;font-weight:600;padding:8px 16px;border-radius:6px;cursor:pointer}
-button.sec{background:#243040;color:var(--fg)}button:disabled{opacity:.4;cursor:default}
-.row{display:flex;gap:10px;flex-wrap:wrap}.row>div{flex:1;min-width:180px}
-.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.pill{padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
-.pill.ok{background:#12351f;color:var(--ok)}.pill.err{background:#3a1420;color:var(--err)}.pill.run{background:#18304a;color:var(--acc)}
-pre{background:#0d1218;border:1px solid var(--bd);border-radius:8px;padding:12px;overflow:auto;max-height:360px;font-size:12px;white-space:pre-wrap}
-table{width:100%;border-collapse:collapse}td{padding:4px 8px;border-bottom:1px solid var(--bd);font-size:13px}td:first-child{color:var(--mut);width:130px}
-.hide{display:none}.msg{margin-top:8px;font-size:13px}.msg.err{color:var(--err)}.msg.ok{color:var(--ok)}
-.warn{background:#3a2d12;color:var(--warn);padding:8px 12px;border-radius:8px;margin-bottom:12px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-small.hint{color:var(--mut);font-weight:400}
+:root{
+  --void:#0b0e13;--surface:#12161e;--raised:#171d28;--sunk:#0d1117;
+  --ink:#e6e9ef;--ink-2:#9aa4b2;--ink-3:#5c6675;
+  --line:rgba(255,255,255,.07);--line-2:rgba(255,255,255,.12);
+  --brass:#d9a441;--brass-dim:rgba(217,164,65,.14);
+  --ok:#3fbf7f;--ok-dim:rgba(63,191,127,.13);
+  --warn:#e0a83f;--err:#e5636c;--err-dim:rgba(229,99,108,.12);
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r-card:10px;--r-ctl:7px;
+}
+*{box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--void);color:var(--ink);font:14px/1.55 var(--sans)}
+::selection{background:var(--brass-dim)}
+main{max-width:1060px;margin:0 auto;padding:20px 18px 60px}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:4px 2px 18px}
+.mark{font:700 15px/1 var(--mono);letter-spacing:.14em;color:var(--ink)}
+.mark b{color:var(--brass);font-weight:700}
+.chip{margin-left:auto;font:500 11px/1 var(--mono);letter-spacing:.05em;color:var(--ink-2);border:1px solid var(--line);padding:6px 10px;border-radius:99px;display:flex;gap:6px;align-items:center}
+.chip.warn{color:var(--warn);border-color:rgba(224,168,63,.35)}
+.led{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:none}
+.led.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.led.err{background:var(--err);box-shadow:0 0 8px var(--err)}
+.led.run{background:var(--brass);box-shadow:0 0 8px var(--brass);animation:breathe 1.4s cubic-bezier(.4,0,.6,1) infinite}
+@keyframes breathe{50%{opacity:.35}}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:18px}
+h2{font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.16em;color:var(--ink-3);margin:0 0 14px}
+
+/* focal mirror band */
+.band{display:grid;grid-template-columns:auto 1fr auto;gap:26px;align-items:center;padding:22px;margin-bottom:18px;background:linear-gradient(180deg,var(--raised),var(--surface));border:1px solid var(--line-2);border-radius:var(--r-card)}
+.dirglyph{font:600 13px/1 var(--mono);letter-spacing:.06em;color:var(--ink-3);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.dirglyph .n{color:var(--ink-2)}.dirglyph .n.act{color:var(--brass)}
+.dirglyph .arr{color:var(--brass);font-size:15px}
+.diff{display:flex;gap:18px;align-items:baseline;font:600 34px/1 var(--mono);font-variant-numeric:tabular-nums}
+.diff span small{display:block;font:500 10px/1.6 var(--mono);letter-spacing:.1em;color:var(--ink-3)}
+.d-cre{color:var(--ok)}.d-upd{color:var(--warn)}.d-del{color:var(--err)}.d-zero{color:var(--ink-3)}
+.bandmeta{font:400 12px/1.7 var(--mono);color:var(--ink-2);text-align:right;font-variant-numeric:tabular-nums}
+.bandmeta b{color:var(--ink);font-weight:600}
+
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1;min-width:150px}
+label{display:block;font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 5px}
+input,select{width:100%;padding:9px 11px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:13px/1.4 var(--sans);transition:border-color .15s cubic-bezier(.23,1,.32,1)}
+input:hover,select:hover{border-color:var(--line-2)}
+input:focus,select:focus{outline:none;border-color:var(--brass);box-shadow:0 0 0 3px var(--brass-dim)}
+input[type=password],input[id$=_s],input[id$=_ci],select{font-family:var(--mono)}
+button{font:600 13px/1 var(--sans);background:var(--brass);color:#141007;border:0;padding:10px 18px;border-radius:var(--r-ctl);cursor:pointer;transition:transform .12s cubic-bezier(.23,1,.32,1),filter .12s}
+button:hover{filter:brightness(1.08)}button:active{transform:scale(.97)}button:disabled{opacity:.4;cursor:default}
+button.sec{background:transparent;color:var(--ink-2);border:1px solid var(--line-2)}
+button.sec:hover{color:var(--ink);border-color:var(--ink-3)}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.msg{margin-top:10px;font:500 12px/1.5 var(--mono);min-height:0}.msg.err{color:var(--err)}.msg.ok{color:var(--ok)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}.band{grid-template-columns:1fr;gap:14px}.bandmeta{text-align:left}}
+.peer{border:1px solid var(--line);border-radius:var(--r-ctl);padding:14px;margin-bottom:12px;background:var(--sunk)}
+.peer h3{margin:0 0 2px;font:600 12px/1 var(--mono);letter-spacing:.1em;color:var(--ink-2)}
+.peer .role{font:400 10px/1 var(--mono);color:var(--ink-3);letter-spacing:.06em}
+.dotok{color:var(--ok)}.dotbad{color:var(--err)}
+
+pre.term{margin:0;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r-ctl);padding:14px;overflow:auto;max-height:520px;font:12px/1.65 var(--mono);color:var(--ink-2);white-space:pre-wrap;word-break:break-word;font-variant-numeric:tabular-nums}
+pre.term .t{color:var(--ink-3)}pre.term .e{color:var(--err)}pre.term .p{color:var(--brass)}
+.termbar{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.termbar .grow{margin-left:auto;font:400 11px/1 var(--mono);color:var(--ink-3)}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:4px 10px;font:12px/1.8 var(--mono);font-variant-numeric:tabular-nums}
+.kv .k{color:var(--ink-3)}.kv .v{color:var(--ink)}
+.hide{display:none}
+.foot{margin-top:26px;font:400 11px/1 var(--mono);color:var(--ink-3);letter-spacing:.04em;text-align:center}
+a{color:var(--brass)}
 </style></head><body><main id="app"></main>
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -28,98 +80,118 @@ const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=nu
 let S={cfg:null,status:null};
 const api=async(p,b)=>{const r=await fetch("/api/"+p,{method:b?"POST":"GET",headers:{"content-type":"application/json"},body:b?JSON.stringify(b):undefined,credentials:"same-origin"});const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j.error||r.status),{j});return j};
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const ago=t=>{const d=Date.now()-new Date(t);const m=Math.round(d/6e4);return m<2?"just now":m<120?Math.round(m/60*10)/10+"h ago":Math.round(m/1440)+"d ago"};
+const until=t=>{const d=new Date(t)-Date.now();if(isNaN(d))return"—";if(d<0)return"due";const h=Math.floor(d/36e5),m=Math.round(d%36e5/6e4);return d<6e5?Math.round(d/1e3)+"s":h>=24?Math.floor(h/24)+"d "+h%24+"h":h+"h "+m+"m"};
 
 async function boot(){
-  try{S.status=await api("status")}catch(e){ if(e.j&&e.j.setup)return setup(); if(e.j&&e.j.error=="unauthorized")return login(); throw e}
-  try{S.cfg=await api("config")}catch(e){ if(e.j&&e.j.error=="unauthorized")return login(); throw e}
+  try{S.status=await api("status")}catch(e){if(e.j&&e.j.setup)return setup();if(e.j&&e.j.error=="unauthorized")return login();return err(e)}
+  try{S.cfg=await api("config")}catch(e){if(e.j&&e.j.error=="unauthorized")return login();return err(e)}
   render();
 }
-function login(err){
-  app.innerHTML="";const c=el("div","card");c.style.maxWidth=380;c.style.margin="15vh auto";
-  c.innerHTML=`<h1>vault-sync</h1><label>Password</label><input id=pw type=password><div id=tw class=hide><label>2FA code</label><input id=code maxlength=7></div><div style="margin-top:12px"><button id=go>Sign in</button></div><div id=m class="msg err"></div>`;
-  app.append(c);
-  if(err==="totp"){$("#tw").classList.remove("hide")}
-  $("#go").onclick=async()=>{try{await api("login",{password:$("#pw").value,code:$("#code")?.value});boot()}catch(e){if(e.j&&e.j.totpExpected)return login("totp");$("#m").textContent=e.message}};
+function err(e){app.innerHTML=`<div class="card"><h2>error</h2><div class="msg err">${esc(e.message)}</div></div>`}
+function login(err_){
+  app.innerHTML=`<div style="max-width:360px;margin:22vh auto"><div class="mark">⚿ VAULT<b>·</b>SYNC</div><div class=card style="margin-top:14px"><h2>operator access</h2>
+  <label>password</label><input id=pw type=password autofocus><div id=tw class=hide><label>2FA code</label><input id=code maxlength=7 inputmode=numeric autocomplete=one-time-code></div>
+  <div style="margin-top:16px"><button id=go>sign in</button></div><div id=m class="msg err"></div></div></div>`;
+  if(err_=="totp"){$("#tw").classList.remove("hide");$("#code").focus()}
+  const go=async()=>{try{await api("login",{password:$("#pw").value,code:$("#code")?.value});boot()}catch(e){if(e.j&&e.j.totpExpected)return login("totp");$("#m").textContent=e.message}};
+  $("#go").onclick=go;$("#pw").onkeydown=e=>e.key=="Enter"&&go();
 }
-function setup(){
-  app.innerHTML="";const c=el("div","card");
-  c.innerHTML=`<h1>Initial setup</h1><p class=msg style="color:var(--mut)">No config found. Set an admin password and configure peers — everything is stored AES-256-GCM encrypted.</p>
-  <label>Admin password (min 8)</label><input id=apw type=password>
-  <div class=grid2><div><h2>Peer A</h2>${peerForm("a")}</div><div><h2>Peer B</h2>${peerForm("b")}</div></div>
-  <div class=row><div><label>Direction</label><select id=dir><option value="A>B">A → B</option><option value="B>A">B → A</option></select></div>
-  <div><label>Method</label><select id=met><option value="mirror">Incremental mirror</option><option value="archive-only">Archive only</option></select></div></div>
-  <div style="margin-top:14px"><button id=go>Create</button></div><div id=m class=msg></div>`;
-  app.append(c);$("#go").onclick=async()=>{
-    try{await api("init",{adminPassword:$("#apw").value,direction:$("#dir").value,method:$("#met").value,a:peerVal("a"),b:peerVal("b")});login()}catch(e){$("#m").textContent=e.message;$("#m").className="msg err"}};
-}
-const peerForm=(k)=>`<label>Server URL</label><input id=${k}_s placeholder="https://vaultwarden.example.com">
-<label>Client ID</label><input id=${k}_ci placeholder="user.xxxx"><label>Client secret</label><input id=${k}_cs type=password>
-<label>Master password</label><input id=${k}_m type=password>`;
+const peerForm=(k,l)=>`<div class=peer><h3>${k.toUpperCase()} <span class=role>${l}</span></h3>
+<label>server</label><input id=${k}_s placeholder="https://vaultwarden.example.com">
+<label>client id</label><input id=${k}_ci placeholder="user.xxxx">
+<label>client secret</label><input id=${k}_cs type=password>
+<label>master password</label><input id=${k}_m type=password></div>`;
 const peerVal=(k)=>({server:$(`#${k}_s`).value,clientId:$(`#${k}_ci`).value,clientSecret:$(`#${k}_cs`).value,master:$(`#${k}_m`).value});
-function peerStored(k,p){const x=S.cfg[k];return `<label>Server URL</label><input id=${k}_s value="${esc(x.server)}" placeholder="https://…">
-<label>Client ID <small class=hint>${esc(x.clientId)||"not set"}</small></label><input id=${k}_ci placeholder="keep ${esc(x.clientId)}">
-<label>Client secret <small class=hint>${x.clientSecretSet?"stored":"not set"}</small></label><input id=${k}_cs type=password placeholder="${x.clientSecretSet?"unchanged":"enter…"}">
-<label>Master password <small class=hint>${x.masterSet?"stored":"not set"}</small></label><input id=${k}_m type=password placeholder="${x.masterSet?"unchanged":"enter…"}">
-<button class=sec data-test=${k}>Test ${k.toUpperCase()}</button> <span id=${k}_tm class=msg></span>`}
-
+function setup(){
+  app.innerHTML=`<div class=topbar><span class="mark">⚿ VAULT<b>·</b>SYNC</span></div>
+  <div class=card style="max-width:760px;margin:0 auto"><h2>initialize</h2>
+  <div class="msg" style="color:var(--ink-2);min-height:0">No config found. Credentials are sealed to <code style="font-family:var(--mono)">config.enc</code> (AES-256-GCM) the moment you save.</div>
+  <label>admin password (min 8)</label><input id=apw type=password>
+  <div class=row style="margin-top:4px"><div>${peerForm("a","source · when a→b")}</div><div>${peerForm("b","target · when a→b")}</div></div>
+  <div class=row><div><label>direction</label><select id=dir><option value="A>B">A → B</option><option value="B>A">B → A</option></select></div>
+  <div><label>method</label><select id=met><option value=mirror>incremental mirror</option><option value=archive-only>archive only</option></select></div></div>
+  <div style="margin-top:18px"><button id=go>create vault mirror</button></div><div id=m class=msg></div></div>`;
+  $("#go").onclick=async()=>{try{await api("init",{adminPassword:$("#apw").value,direction:$("#dir").value,method:$("#met").value,a:peerVal("a"),b:peerVal("b")});login()}catch(e){$("#m").textContent=e.message;$("#m").className="msg err"}};
+}
+const dn=(n,cls,l)=>`<span class="${n?cls:"d-zero"}">${n} <small>${l}</small></span>`;
 function render(){
-  const st=S.status, lr=st.state.lastRun;
-  app.innerHTML=`<div class=head><h1>vault-sync</h1><div>${st.running?'<span class="pill run">running</span>':lr?(lr.ok?'<span class="pill ok">last run ok</span>':'<span class="pill err">last run had errors</span>'):'<span class="pill err">never run</span>'} <button class=sec id=logout>logout</button></div></div>
-  ${st.keyFromUSB?"":'<div class=warn>⚠ encryption key lives inside the data volume (no /run/secrets/key mount). Anyone with the volume can decrypt credentials.</div>'}
-  <div class=card><h2>Status</h2><table>
-   <tr><td>Last run</td><td>${lr?esc(new Date(lr.ts).toLocaleString()):"—"}${lr?` · ${(lr.durationMs/1000).toFixed(1)}s`:""}</td></tr>
-   <tr><td>Direction / method</td><td>${lr?esc(lr.direction)+" · "+esc(lr.method):"—"}</td></tr>
-   <tr><td>Plan</td><td>${lr&&lr.plan?`+${lr.plan.cre}/~${lr.plan.upd}/-${lr.plan.del} (folders +${lr.plan.creF}/-${lr.plan.delF})`:"—"}</td></tr>
-   <tr><td>Applied / errors</td><td>${lr?`${lr.applied} / ${lr.errors}`:"—"}</td></tr>
-   <tr><td>Next run</td><td>${st.nextRun?new Date(st.nextRun).toLocaleString():"manual only"}</td></tr>
-   <tr><td></td><td><button id=run>Run now</button></td></tr></table><div id=rm class=msg></div></div>
-  <div class=grid2>
-   <div class=card><h2>Sync settings</h2>
-     <div class=row><div><label>Direction</label><select id=dir><option ${S.cfg.direction=="A>B"&&"selected"}>A>B</option><option ${S.cfg.direction=="B>A"&&"selected"}>B>A</option></select></div>
-     <div><label>Method</label><select id=met><option value=mirror ${S.cfg.method=="mirror"&&"selected"}>Incremental mirror</option><option value=archive-only ${S.cfg.method=="archive-only"&&"selected"}>Archive only</option></select></div></div>
-     <label>Schedule</label><select id=sk><option value=daily ${S.cfg.schedule.kind=="daily"&&"selected"}>Daily at</option><option value=interval ${S.cfg.schedule.kind=="interval"&&"selected"}>Every N hours</option><option value=manual ${S.cfg.schedule.kind=="manual"&&"selected"}>Manual only</option></select>
-     <div id=s1 class=row style="margin-top:8px"><div><label>Time (HH:MM)</label><input id=at value="${esc(S.cfg.schedule.at||"04:17")}"></div></div>
-     <div id=s2 class="row hide" style="margin-top:8px"><div><label>Hours</label><input id=hrs type=number min=1 value=${S.cfg.schedule.hours||24}></div></div>
-     <label>Archive retention (days kept)</label><input id=ret type=number min=1 max=60 value=${S.cfg.retention}>
-     <div style="margin-top:12px"><button id=saveCfg>Save</button></div><div id=cm class=msg></div></div>
-   <div class=card><h2>Two-factor (UI login)</h2><div id=tfa></div>
-   </div>
-  <div class=card><h2>Access</h2><div class=row>
-   <div><label>New password (min 8)</label><input id=apw2 type=password></div>
-   <div><label>Confirm new password</label><input id=apw3 type=password></div></div>
-   <div style="margin-top:10px"><button id=savePw>Change password</button></div><div id=pwm class=msg></div></div>
-  <div class=card><h2>Credentials</h2><div class=grid2><div><h2>Peer A <small class=hint>source when A→B</small></h2>${peerStored("a")}</div><div><h2>Peer B <small class=hint>target when A→B</small></h2>${peerStored("b")}</div></div>
-   <div style="margin-top:12px"><button id=saveCred>Save credentials</button></div><div id=credm class=msg></div></div>
-  <div class=card><h2>Log</h2><button class=sec id=ref>Refresh</button> <button class=sec onclick="location.reload()">Reload</button><pre id=lg style="margin-top:10px">loading…</pre></div>`;
+  const st=S.status, r=st.state.lastRun, run=st.running;
+  const ab=st.state.lastRun||S.cfg.direction=="A>B";
+  app.innerHTML=`
+  <div class=topbar><span class="mark">⚿ VAULT<b>·</b>SYNC</span>
+    <span class="chip ${st.keyFromUSB?"":"warn"}"><span class="led ${st.keyFromUSB?"ok":"err"}"></span>${st.keyFromUSB?"key sealed · usb mount":"key on disk · mount usb key"}</span></div>
+
+  <div class=band>
+    <div class=dirglyph>
+      <span class="n ${ab?"act":""}">A</span><span class="arr">${ab?"─▶":"◀─"}</span><span class="n ${ab?"":"act"}">B</span>
+      <span class="led ${run?"run":r?(r.ok?"ok":"err"):""}" style="margin-left:10px"></span>
+    </div>
+    <div class="diff">${r&&r.plan?dn(r.plan.cre,"d-cre","create")+dn(r.plan.upd,"d-upd","update")+dn(r.plan.del,"d-del","delete"):run?'<span style="font:500 20px/1 var(--mono);color:var(--brass)">syncing…</span>':'<span class=d-zero>— <small>never run</small></span>'}</div>
+    <div class=bandmeta>${r?`<b>${ago(r.ts)}</b> · ${(r.durationMs/1000).toFixed(1)}s<br>${r.applied} ops · ${r.errors} errors${r.dry?" · <span style=color:var(--warn)>dry</span>":""}`:"no runs yet"}<br><span style="color:var(--ink-3)">next ${st.nextRun?until(st.nextRun):"manual"}</span><br><button id=run ${run?"disabled":""} class="sec" style="margin-top:8px">⚡ run now</button></div>
+  </div>
+
+  <div class=grid>
+    <div class=card><h2>mirror log</h2><div class=termbar><button class=sec id=refl>refresh</button><span class=grow id=ln></span></div><pre class=term id=lg>loading…</pre></div>
+    <div>
+      <div class=card style="margin-bottom:18px"><h2>schedule &amp; method</h2>
+        <label>direction</label><select id=dir><option ${S.cfg.direction=="A>B"&&"selected"}>A>B</option><option ${S.cfg.direction=="B>A"&&"selected"}>B>A</option></select>
+        <label>method</label><select id=met><option value=mirror ${S.cfg.method=="mirror"&&"selected"}>incremental mirror</option><option value=archive-only ${S.cfg.method=="archive-only"&&"selected"}>archive only</option></select>
+        <label>schedule</label><select id=sk><option value=daily ${S.cfg.schedule.kind=="daily"&&"selected"}>daily at…</option><option value=interval ${S.cfg.schedule.kind=="interval"&&"selected"}>every N hours</option><option value=manual ${S.cfg.schedule.kind=="manual"&&"selected"}>manual only</option></select>
+        <div id=s1 class=row style="margin-top:10px"><div><label>time hh:mm</label><input id=at value="${esc(S.cfg.schedule.at||"04:17")}"></div></div>
+        <div id=s2 class="row hide" style="margin-top:10px"><div><label>hours</label><input id=hrs type=number min=1 value=${S.cfg.schedule.hours||24}></div><div><label>keep archives</label><input id=ret type=number min=1 max=60 value=${S.cfg.retention}></div></div>
+        <div style="margin-top:16px"><button id=saveCfg>save</button></div><div id=cm class=msg></div></div>
+
+      <div class=card style="margin-bottom:18px"><h2>access</h2>
+        <div class="kv" style="margin-bottom:4px"><span class=k>2FA</span><span class=v>${S.cfg.totpEnabled?'<span class=dotok>● enabled</span> <button class=sec id=toff style="margin-left:8px;padding:4px 10px">disable</button>':'<span style=color:var(--ink-3)>○ off</span> <button class=sec id=ten style="margin-left:8px;padding:4px 10px">enable</button>'}</span></div>
+        <div id=tflow class=hide style="margin-bottom:6px"><label>add to authenticator</label><pre class=term style="max-height:80px;padding:10px" id=turl></pre><label>confirm code</label><div class=row style="align-items:flex-end"><div><input id=tcode maxlength=7 inputmode=numeric></div><div style=flex:0><button id=tconf style="margin-bottom:2px">confirm</button></div></div></div>
+        <label>new password · min 8</label><input id=apw2 type=password>
+        <label>confirm password</label><input id=apw3 type=password>
+        <div style="margin-top:16px"><button id=savePw>change password</button> <button class=sec id=logout>sign out</button></div><div id=pwm class=msg></div></div>
+
+      <div class=card><h2>peers</h2>
+        ${peerStored("a")} ${peerStored("b")}
+        <div style="margin-top:12px"><button id=saveCred>save credentials</button></div><div id=credm class=msg></div></div>
+    </div>
+  </div>
+  <div class=foot>vault-sync · ${r?`${r.applied} ops in last run`:"idle"} · <span id=clk></span></div>`;
 
   $("#logout").onclick=async()=>{await api("logout",{});login()};
-  $("#run").onclick=async()=>{try{await api("run",{});$("#rm").textContent="started…";poll()}catch(e){$("#rm").textContent=e.message;$("#rm").className="msg err"}};
+  $("#run").onclick=async()=>{try{await api("run",{});tick(true)}catch(e){}};
   $("#sk").onchange=e=>{$("#s1").classList.toggle("hide",e.target.value!="daily");$("#s2").classList.toggle("hide",e.target.value!="interval")};
   $("#saveCfg").onclick=async()=>{
     const body={direction:$("#dir").value,method:$("#met").value,retention:+$("#ret").value};
-    const k=$("#sk").value; body.schedule=k=="daily"?{kind:"daily",at:$("#at").value}:k=="interval"?{kind:"interval",hours:+$("#hrs").value}:{kind:"manual"};
-    try{await api("config",body);flash("#cm","saved",1);boot()}catch(e){flash("#cm",e.message,0)}};
-  $("#saveCred").onclick=async()=>{try{await api("config",{a:peerVal("a"),b:peerVal("b")});flash("#credm","saved",1);boot()}catch(e){flash("#credm",e.message,0)}};
+    const k=$("#sk").value;body.schedule=k=="daily"?{kind:"daily",at:$("#at").value}:k=="interval"?{kind:"interval",hours:+$("#hrs").value}:{kind:"manual"};
+    try{await api("config",body);flash("#cm","saved ✓",1);boot()}catch(e){flash("#cm",e.message,0)}};
+  $("#saveCred").onclick=async()=>{try{await api("config",{a:peerVal("a"),b:peerVal("b")});flash("#credm","saved ✓",1);boot()}catch(e){flash("#credm",e.message,0)}};
   $("#savePw").onclick=async()=>{const p=$("#apw2").value;if(!p)return;
-   if(p.length<8)return flash("#pwm","minimum 8 characters",0);
-   if(p!==$("#apw3").value)return flash("#pwm","confirmation does not match",0);
-   try{await api("config",{adminPassword:p});flash("#pwm","password updated \u2713",1);$("#apw2").value=$("#apw3").value=""}catch(e){flash("#pwm",e.message,0)}};
-  $$("[data-test]").forEach(b=>b.onclick=async()=>{const k=b.dataset.test;const t=$(`#${k}_tm`);t.textContent="testing…";t.className="msg";
+    if(p.length<8)return flash("#pwm","minimum 8 characters",0);
+    if(p!==$("#apw3").value)return flash("#pwm","confirmation does not match",0);
+    try{await api("config",{adminPassword:p});flash("#pwm","password updated ✓",1);$("#apw2").value=$("#apw3").value=""}catch(e){flash("#pwm",e.message,0)}};
+  $$("[data-test]").forEach(b=>b.onclick=async()=>{const k=b.dataset.test;const t=$(`#${k}_tm`);t.textContent="testing seal…";t.className="msg";
     try{await api("test",{peer:k.toUpperCase(),...peerVal(k)});t.textContent="connection ok ✓";t.className="msg ok"}catch(e){t.textContent=e.message;t.className="msg err"}});
-  renderTfa();
-  loadLogs();
-  function renderTfa(){
-    if(S.cfg.totpEnabled){$("#tfa").innerHTML=`<span class="pill ok">2FA enabled</span> <button class=sec id=toff style="margin-left:8px">Disable</button>`;$("#toff").onclick=async()=>{await api("2fa/disable",{});boot()};return}
-    $("#tfa").innerHTML=`<button class=sec id=ten>Enable 2FA</button><div id=tflow class=hide style="margin-top:10px">
-      <label>Add this URL/secret to your authenticator:</label><pre id=turl></pre>
-      <label>Then enter current code</label><input id=tcode maxlength=7><button id=tconf style="margin-top:8px">Confirm</button></div>`;
-    $("#ten").onclick=async()=>{const r=await api("2fa/enroll",{});$("#tflow").classList.remove("hide");$("#turl").textContent=r.url};
-    $("#tconf").onclick=async()=>{try{await api("2fa/enable",{code:$("#tcode").value});boot()}catch(e){alert(e.message)}};
-  }
+  const toff=$("#toff");if(toff)toff.onclick=async()=>{await api("2fa/disable",{});boot()};
+  const ten=$("#ten");if(ten)ten.onclick=async()=>{const r=await api("2fa/enroll",{});$("#tflow").classList.remove("hide");$("#turl").textContent=r.url};
+  const tconf=$("#tconf");if(tconf)tconf.onclick=async()=>{try{await api("2fa/enable",{code:$("#tcode").value});boot()}catch(e){alert(e.message)}};
+  $("#refl").onclick=loadLogs;
+  loadLogs();tick();
 }
-function flash(sel,txt,ok){const e=$(sel);e.textContent=txt;e.className="msg "+(ok?"ok":"err");setTimeout(()=>e.textContent="",6000)}
-async function loadLogs(){const r=await api("logs");$("#lg").textContent=r.text||"(empty)"}
-async function poll(){try{S.status=await api("status");if(!S.status.running){S.cfg=await api("config");render()}}catch(e){}}
-setInterval(async()=>{if($("#lg")){loadLogs();const st=await api("status").catch(()=>null);if(st&&!st.running&&S.status&&S.status.running)render();else if(st&&st.running&&!S.status.running){S.status=st;render()}else S.status=st}},20000);
-boot().catch(e=>{app.innerHTML=`<div class=card><h2>Error</h2><pre>${esc(e.message)}</pre></div>`});
+function peerStored(k){const x=S.cfg[k];const role=k=="a"?(S.cfg.direction=="A>B"?"source":"target"):(S.cfg.direction=="A>B"?"target":"source");
+  return `<div class=peer><h3>${k.toUpperCase()} <span class=role>${role}</span></h3>
+  <label>server</label><input id=${k}_s value="${esc(x.server)}" placeholder="https://…">
+  <label>client id · <span style="color:var(--ink-2)">${esc(x.clientId)||"not set"}</span></label><input id=${k}_ci placeholder="unchanged">
+  <label>client secret</label><input id=${k}_cs type=password placeholder="${x.clientSecretSet?"unchanged":"enter…"}">
+  <label>master password</label><input id=${k}_m type=password placeholder="${x.masterSet?"unchanged":"enter…"}">
+  <div style="margin-top:10px"><button class=sec data-test=${k} style="padding:6px 12px">test ${k.toUpperCase()}</button> <span id=${k}_tm class=msg style="margin-top:0;display:inline"></span></div></div>`}
+function flash(sel,txt,ok){const e=$(sel);if(!e)return;e.textContent=txt;e.className="msg "+(ok?"ok":"err");setTimeout(()=>e&&(e.textContent=""),6000)}
+async function loadLogs(){try{const r=await api("logs");const t=r.text.split("\n").map(l=>l.replace(/^(\[[^\]]+\]) /,"<span class=t>$1</span> ").replace(/(ERR .*)$/,"<span class=e>$1</span>").replace(/(plan:.*)$/,"<span class=p>$1</span>")).join("\n");const lg=$("#lg");if(lg){lg.innerHTML=t||'<span class=t>— no runs yet —</span>';lg.scrollTop=lg.scrollHeight}const ln=$("#ln");if(ln)ln.textContent=r.text?r.text.trim().split("\n").length+" lines":""}catch(e){}}
+let clkI;function tick(force){const c=$("#clk");if(c)c.textContent=new Date().toLocaleTimeString();const n=$("#s2")&&0;
+  if(force){setTimeout(async()=>{const s=await api("status").catch(()=>null);if(s){S.status=s;if(!s.running){boot()}else render()}},4000)}}
+setInterval(async()=>{
+  const c=$("#clk");if(c)c.textContent=new Date().toLocaleTimeString();
+  const s=await api("status").catch(()=>null);if(!s)return;
+  if(s.running!==S.status.running){S.status=s;render();return}
+  S.status=s;loadLogs();
+},15000);
+boot();
 </script></body></html>

@@ -1,4 +1,5 @@
 FROM node:20-alpine
+RUN apk add --no-cache tzdata && cp /usr/share/zoneinfo/Asia/Hong_Kong /etc/localtime && echo "Asia/Hong_Kong" > /etc/timezone
 RUN npm install -g @bitwarden/cli@latest
 WORKDIR /app
 COPY package.json ./
