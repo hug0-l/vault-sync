@@ -90,12 +90,12 @@ const until=t=>{const d=new Date(t)-Date.now();if(isNaN(d))return"—";if(d<0)re
 async function boot(){
   try{S.status=await api("status")}catch(e){if(e.j&&e.j.setup)return setup();if(e.j&&e.j.error=="unauthorized")return login();return err(e)}
   try{S.cfg=await api("config")}catch(e){if(e.j&&e.j.error=="unauthorized")return login();return err(e)}
-  render();
+  authed=true;prevRun=S.status?S.status.running:null;return render();
 }
 function err(e){app.innerHTML=`<div class="card"><h2>error</h2><div class="msg err">${esc(e.message)}</div></div>`}
 function login(err_){
   app.innerHTML=`<div style="max-width:360px;margin:22vh auto"><div style="display:flex;align-items:center;gap:10px"><img class=ic src="/icon.svg" alt=""><span class="mark">VAULT<b>·</b>SYNC</span></div><div class=card style="margin-top:14px"><h2>operator access</h2>
-  <label>password</label><input id=pw type=password autofocus><div id=tw class=hide><label>2FA code</label><input id=code maxlength=7 inputmode=numeric autocomplete=one-time-code></div>
+  <label>password</label><input id=pw name=oppass type=password autocomplete="new-password" data-1p-ignore spellcheck=false autofocus><div id=tw class=hide><label>2FA code</label><input id=code name=otp maxlength=7 inputmode=numeric autocomplete="one-time-code" data-1p-ignore spellcheck=false></div>
   <div style="margin-top:16px"><button id=go>sign in</button></div><div id=m class="msg err"></div></div></div>`;
   if(err_=="totp"){$("#tw").classList.remove("hide");$("#code").focus()}
   const go=async()=>{try{await api("login",{password:$("#pw").value,code:$("#code")?.value});boot()}catch(e){if(e.j&&e.j.totpExpected)return login("totp");$("#m").textContent=e.message}};
@@ -160,7 +160,7 @@ function render(){
   </div>
   <div class=foot>vault-sync · ${r?`${r.applied} ops in last run`:"idle"} · <span id=clk></span></div>`;
 
-  $("#logout").onclick=async()=>{await api("logout",{});login()};
+  $("#logout").onclick=async()=>{await api("logout",{});authed=false;login()};
   $("#run").onclick=async()=>{try{await api("run",{});tick(true)}catch(e){}};
   $("#sk").onchange=e=>{$("#s1").classList.toggle("hide",e.target.value!="daily");$("#s2").classList.toggle("hide",e.target.value!="interval")};
   $("#saveCfg").onclick=async()=>{
@@ -191,10 +191,12 @@ function flash(sel,txt,ok){const e=$(sel);if(!e)return;e.textContent=txt;e.class
 async function loadLogs(){try{const r=await api("logs");const t=r.text.split("\n").map(l=>l.replace(/^(\[[^\]]+\]) /,"<span class=t>$1</span> ").replace(/(ERR .*)$/,"<span class=e>$1</span>").replace(/(plan:.*)$/,"<span class=p>$1</span>")).join("\n");const lg=$("#lg");if(lg){lg.innerHTML=t||'<span class=t>— no runs yet —</span>';lg.scrollTop=lg.scrollHeight}const ln=$("#ln");if(ln)ln.textContent=r.text?r.text.trim().split("\n").length+" lines":""}catch(e){}}
 let clkI;function tick(force){const c=$("#clk");if(c)c.textContent=new Date().toLocaleTimeString();const n=$("#s2")&&0;
   if(force){setTimeout(async()=>{const s=await api("status").catch(()=>null);if(s){S.status=s;if(!s.running){boot()}else render()}},4000)}}
+let authed=false, prevRun=null;
 setInterval(async()=>{
+  if(!authed)return;
   const c=$("#clk");if(c)c.textContent=new Date().toLocaleTimeString();
   const s=await api("status").catch(()=>null);if(!s)return;
-  if(s.running!==S.status.running){S.status=s;render();return}
+  if(s.running!==prevRun){prevRun=s.running;render();return}
   S.status=s;loadLogs();
 },15000);
 boot();

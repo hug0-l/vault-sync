@@ -1,5 +1,7 @@
 # vault-sync
 
+![vault-sync banner](.github/banner.svg)
+
 A self-contained container that keeps a second Bitwarden-compatible vault as an **encrypted, incremental mirror** of your primary [Vaultwarden](https://github.com/dani-garcia/vaultwarden) (or any two Bitwarden-API servers, either direction) — with a small web UI for credentials, scheduling, logs and manual runs.
 
 Built for unattended nightly operation on NAS boxes (developed on Unraid), headless-safe: API-key auth skips interactive 2FA/device challenges, and everything sensitive is encrypted at rest.
