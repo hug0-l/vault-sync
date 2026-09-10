@@ -1,6 +1,8 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>vault-sync · mirror console</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon.svg">
 <style>
 :root{
   --void:#0b0e13;--surface:#12161e;--raised:#171d28;--sunk:#0d1117;
@@ -20,6 +22,8 @@ body{margin:0;background:var(--void);color:var(--ink);font:14px/1.55 var(--sans)
 main{max-width:1060px;margin:0 auto;padding:20px 18px 60px}
 
 .topbar{display:flex;align-items:center;gap:12px;padding:4px 2px 18px}
+.ic{width:28px;height:28px;border-radius:8px;flex:none;box-shadow:0 0 0 1px var(--line-2),0 4px 14px rgba(99,102,241,.25)}
+.topbar{align-items:center}
 .mark{font:700 15px/1 var(--mono);letter-spacing:.14em;color:var(--ink)}
 .mark b{color:var(--brass);font-weight:700}
 .chip{margin-left:auto;font:500 11px/1 var(--mono);letter-spacing:.05em;color:var(--ink-2);border:1px solid var(--line);padding:6px 10px;border-radius:99px;display:flex;gap:6px;align-items:center}
@@ -90,7 +94,7 @@ async function boot(){
 }
 function err(e){app.innerHTML=`<div class="card"><h2>error</h2><div class="msg err">${esc(e.message)}</div></div>`}
 function login(err_){
-  app.innerHTML=`<div style="max-width:360px;margin:22vh auto"><div class="mark">⚿ VAULT<b>·</b>SYNC</div><div class=card style="margin-top:14px"><h2>operator access</h2>
+  app.innerHTML=`<div style="max-width:360px;margin:22vh auto"><div style="display:flex;align-items:center;gap:10px"><img class=ic src="/icon.svg" alt=""><span class="mark">VAULT<b>·</b>SYNC</span></div><div class=card style="margin-top:14px"><h2>operator access</h2>
   <label>password</label><input id=pw type=password autofocus><div id=tw class=hide><label>2FA code</label><input id=code maxlength=7 inputmode=numeric autocomplete=one-time-code></div>
   <div style="margin-top:16px"><button id=go>sign in</button></div><div id=m class="msg err"></div></div></div>`;
   if(err_=="totp"){$("#tw").classList.remove("hide");$("#code").focus()}
@@ -104,7 +108,7 @@ const peerForm=(k,l)=>`<div class=peer><h3>${k.toUpperCase()} <span class=role>$
 <label>master password</label><input id=${k}_m type=password></div>`;
 const peerVal=(k)=>({server:$(`#${k}_s`).value,clientId:$(`#${k}_ci`).value,clientSecret:$(`#${k}_cs`).value,master:$(`#${k}_m`).value});
 function setup(){
-  app.innerHTML=`<div class=topbar><span class="mark">⚿ VAULT<b>·</b>SYNC</span></div>
+  app.innerHTML=`<div class=topbar><img class=ic src="/icon.svg" alt=""><span class="mark">VAULT<b>·</b>SYNC</span></div>
   <div class=card style="max-width:760px;margin:0 auto"><h2>initialize</h2>
   <div class="msg" style="color:var(--ink-2);min-height:0">No config found. Credentials are sealed to <code style="font-family:var(--mono)">config.enc</code> (AES-256-GCM) the moment you save.</div>
   <label>admin password (min 8)</label><input id=apw type=password>
@@ -119,7 +123,7 @@ function render(){
   const st=S.status, r=st.state.lastRun, run=st.running;
   const ab=st.state.lastRun||S.cfg.direction=="A>B";
   app.innerHTML=`
-  <div class=topbar><span class="mark">⚿ VAULT<b>·</b>SYNC</span>
+  <div class=topbar><img class=ic src="/icon.svg" alt=""><span class="mark">VAULT<b>·</b>SYNC</span>
     <span class="chip ${st.keyFromUSB?"":"warn"}"><span class="led ${st.keyFromUSB?"ok":"err"}"></span>${st.keyFromUSB?"key sealed · usb mount":"key on disk · mount usb key"}</span></div>
 
   <div class=band>
