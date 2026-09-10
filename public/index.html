@@ -83,9 +83,11 @@ function render(){
      <label>Archive retention (days kept)</label><input id=ret type=number min=1 max=60 value=${S.cfg.retention}>
      <div style="margin-top:12px"><button id=saveCfg>Save</button></div><div id=cm class=msg></div></div>
    <div class=card><h2>Two-factor (UI login)</h2><div id=tfa></div>
-     <label>Change admin password</label><input id=apw2 type=password placeholder="leave empty to keep">
-     <div style="margin-top:10px"><button id=savePw>Update password</button></div><div id=pwm class=msg></div></div>
-  </div>
+   </div>
+  <div class=card><h2>Access</h2><div class=row>
+   <div><label>New password (min 8)</label><input id=apw2 type=password></div>
+   <div><label>Confirm new password</label><input id=apw3 type=password></div></div>
+   <div style="margin-top:10px"><button id=savePw>Change password</button></div><div id=pwm class=msg></div></div>
   <div class=card><h2>Credentials</h2><div class=grid2><div><h2>Peer A <small class=hint>source when A→B</small></h2>${peerStored("a")}</div><div><h2>Peer B <small class=hint>target when A→B</small></h2>${peerStored("b")}</div></div>
    <div style="margin-top:12px"><button id=saveCred>Save credentials</button></div><div id=credm class=msg></div></div>
   <div class=card><h2>Log</h2><button class=sec id=ref>Refresh</button> <button class=sec onclick="location.reload()">Reload</button><pre id=lg style="margin-top:10px">loading…</pre></div>`;
@@ -98,7 +100,10 @@ function render(){
     const k=$("#sk").value; body.schedule=k=="daily"?{kind:"daily",at:$("#at").value}:k=="interval"?{kind:"interval",hours:+$("#hrs").value}:{kind:"manual"};
     try{await api("config",body);flash("#cm","saved",1);boot()}catch(e){flash("#cm",e.message,0)}};
   $("#saveCred").onclick=async()=>{try{await api("config",{a:peerVal("a"),b:peerVal("b")});flash("#credm","saved",1);boot()}catch(e){flash("#credm",e.message,0)}};
-  $("#savePw").onclick=async()=>{if(!$("#apw2").value)return;try{await api("config",{adminPassword:$("#apw2").value});flash("#pwm","updated",1);$("#apw2").value=""}catch(e){flash("#pwm",e.message,0)}};
+  $("#savePw").onclick=async()=>{const p=$("#apw2").value;if(!p)return;
+   if(p.length<8)return flash("#pwm","minimum 8 characters",0);
+   if(p!==$("#apw3").value)return flash("#pwm","confirmation does not match",0);
+   try{await api("config",{adminPassword:p});flash("#pwm","password updated \u2713",1);$("#apw2").value=$("#apw3").value=""}catch(e){flash("#pwm",e.message,0)}};
   $$("[data-test]").forEach(b=>b.onclick=async()=>{const k=b.dataset.test;const t=$(`#${k}_tm`);t.textContent="testing…";t.className="msg";
     try{await api("test",{peer:k.toUpperCase(),...peerVal(k)});t.textContent="connection ok ✓";t.className="msg ok"}catch(e){t.textContent=e.message;t.className="msg err"}});
   renderTfa();
